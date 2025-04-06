@@ -97,3 +97,19 @@ async def create_db_async():
             raise
         finally:
             await admin_engine.dispose()
+
+async def get_session_dependency() -> AsyncSession:
+    """
+    Функция для использования в FastAPI Depends
+    Возвращает сессию без контекстного менеджера
+    """
+    session = base_session_factory()
+    try:
+        yield session
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"API session rollback: {str(e)}", exc_info=True)
+        raise
+    finally:
+        await session.close()

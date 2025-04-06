@@ -1,19 +1,42 @@
 import asyncio
+import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.v1.endpoints import movements, stock, kafka, admin
+from app.api.v1.endpoints import movements, stock, kafka_webhook, admin
 from app.db.session import create_db_async
 from app.config import settings
+from app.services.kafka_consumer import run_consumer
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Управление жизненным циклом приложения"""
+    consumer_task = None
+    if settings.APP_MODE == "kafka":
+        consumer_task = asyncio.create_task(run_consumer())
+        logger.info("Kafka consumer started")
+
+    yield  # Приложение работает здесь
+
+    if settings.APP_MODE == "kafka":
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            logger.info("Kafka consumer stopped")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    version=settings.PROJECT_VERSION
+    version=settings.PROJECT_VERSION,
+    lifespan=lifespan
 )
 
 app.include_router(movements.router, prefix="/api/v1/movements", tags=["movements"])
 app.include_router(stock.router, prefix="/api/v1/warehouse", tags=["warehouse"])
-app.include_router(kafka.router, prefix="/api/v1/kafka", tags=["kafka"])
+app.include_router(kafka_webhook.router, prefix="/api/v1/kafka", tags=["Kafka Webhook"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
 

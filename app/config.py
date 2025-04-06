@@ -1,4 +1,4 @@
-from pydantic import PostgresDsn, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     IS_AUTOTEST: bool = Field(default=False, alias="is_autotest")
 
     # Kafka settings
+    APP_MODE: str = "webhook_only"  # Режим работы (kafka | webhook_only)
     KAFKA_BOOTSTRAP_SERVERS: str = Field(..., alias="kafka_bootstrap_servers")
     KAFKA_TOPIC: str = Field(..., alias="kafka_topic")
     KAFKA_GROUP_ID: str = Field(..., alias="kafka_group_id")

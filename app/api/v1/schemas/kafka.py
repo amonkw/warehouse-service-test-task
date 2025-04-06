@@ -1,47 +1,47 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 from uuid import UUID
-from typing import Dict, Optional
+from enum import Enum
+from typing import Optional
 
 
-class KafkaMessage(BaseModel):
-    """Схема для сообщения из Kafka"""
-    id: UUID
-    source: str = Field(..., pattern=r"^WH-\d{4}$", examples=["WH-3423"])
-    specversion: str = Field(..., examples=["1.0"])
-    type: str = Field(..., examples=["ru.retail.warehouses.movement"])
-    datacontenttype: str = Field(..., examples=["application/json"])
-    dataschema: str = Field(..., examples=["ru.retail.warehouses.movement.v1.0"])
-    time: int = Field(..., examples=[1737439421623])
-    subject: str = Field(..., examples=["WH-3423:ARRIVAL"])
-    destination: str = Field(..., examples=["ru.retail.warehouses"])
-    data: Dict
+class MovementEventType(str, Enum):
+    ARRIVAL = "arrival"
+    DEPARTURE = "departure"
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "b3b53031-e83a-4654-87f5-b6b6fb09fd99",
-                "source": "WH-3423",
-                "specversion": "1.0",
-                "type": "ru.retail.warehouses.movement",
-                "datacontenttype": "application/json",
-                "dataschema": "ru.retail.warehouses.movement.v1.0",
-                "time": 1737439421623,
-                "subject": "WH-3423:ARRIVAL",
-                "destination": "ru.retail.warehouses",
-                "data": {
-                    "movement_id": "c6290746-790e-43fa-8270-014dc90e02e0",
-                    "warehouse_id": "c1d70455-7e14-11e9-812a-70106f431230",
-                    "timestamp": "2025-02-18T14:34:56Z",
-                    "event": "arrival",
-                    "product_id": "4705204f-498f-4f96-b4ba-df17fb56bf55",
-                    "quantity": 100
-                }
-            }
-        }
+
+class KafkaMessageData(BaseModel):
+    """Схема для data-части Kafka-сообщения"""
+    movement_id: UUID = Field(..., description="Уникальный ID перемещения (одинаковый для отправки/приемки)")
+    warehouse_id: UUID = Field(..., description="ID склада")
+    product_id: UUID = Field(..., description="ID товара")
+    quantity: int = Field(..., gt=0, description="Количество товара (должно быть > 0)")
+    timestamp: datetime = Field(..., description="Время события в ISO формате")
+    event: MovementEventType = Field(..., description="Тип события: arrival или departure")
+
+
+class KafkaFullMessage(BaseModel):
+    """Полная схема Kafka-сообщения"""
+    id: UUID = Field(default=None, description="ID сообщения")
+    source: str = Field(default=None, pattern=r'^WH-\d{4}$', description="Источник отправки в формате WH-XXXX")
+    specversion: Optional[str] = Field(default=None, description="Версия спецификации CloudEvents")
+    type: Optional[str] = Field(default=None, description="Тип события", )
+    datacontenttype: Optional[str] = Field(default="application/json", description="Тип содержимого")
+    dataschema: Optional[str] = Field(default=None, description="Схема данных")
+    time: Optional[int] = Field(default=None, description="Временная метка в миллисекундах")
+    subject: Optional[str] = Field(default=None, description="Тема сообщения")
+    destination: Optional[str] = Field(default=None, description="Назначение сообщения")
+    data: KafkaMessageData = Field(..., description="Данные перемещения")
+
+
+class KafkaWebhookRequest(KafkaFullMessage):
+    """Схема для вебхук-запроса (имитация Kafka)"""
+    pass
 
 
 class KafkaResponse(BaseModel):
-    """Схема для ответа обработчика Kafka"""
-    status: str = Field(..., examples=["processed"])
-    movement_id: Optional[UUID] = None
-    details: Optional[str] = None
+    """Схема ответа API"""
+    status: str = Field(..., examples=["processed"], description="Статус обработки")
+    message_id: UUID = Field(..., description="ID обработанного сообщения")
+    movement_id: UUID = Field(..., description="ID перемещения")
+    details: dict = Field(None, description="Дополнительные детали")

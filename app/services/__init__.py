@@ -1,10 +1,5 @@
-from .kafka_handler import KafkaHandler
-from .movement_service import MovementService
-from .stock_service import StockService
+from .kafka_consumer import KafkaConsumer
 
 __all__ = [
-    'StockService',
-    'KafkaHandler',
-    'MovementService',
-
+    'KafkaConsumer',
 ]
