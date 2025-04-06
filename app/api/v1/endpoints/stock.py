@@ -1,76 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from uuid import UUID
-from typing import List
+from fastapi import APIRouter, Depends
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.stock_service import StockService
-from app.db.session import get_session
-from app.api.v1.schemas.stock import (
-    StockItemResponse,
-    StockLevelResponse,
-    WarehouseStockResponse,
-    WarehouseProductStockResponse
-)
+from app.db import StockItem
+from app.db.session import get_session_dependency
+from uuid import UUID
+
+from app.api.v1.schemas.stock import ProductStockResponse
 
 router = APIRouter()
 
 
-@router.get("/items/{item_id}", response_model=StockItemResponse)
-async def get_stock_item(
-        item_id: UUID,
-        db: AsyncSession = Depends(get_session)
-):
-    stock_item = await StockService.get_stock_item_by_id(db, item_id)
-    if not stock_item:
-        raise HTTPException(status_code=404, detail="Stock item not found")
-    return stock_item
-
-
-@router.get("/{warehouse_id}", response_model=WarehouseStockResponse)
-async def get_warehouse_stock(
+# Получить количество товара на складе
+@router.get(
+    "/{warehouse_id}/products/{product_id}",
+    response_model=ProductStockResponse,
+    summary="Получить остаток товара на складе",
+    responses={
+        200: {"description": "Успешный ответ", "model": ProductStockResponse},
+    },
+)
+async def get_product_stock(
         warehouse_id: UUID,
-        threshold: int = Query(0, ge=0),
-        db: AsyncSession = Depends(get_session)
+        product_id: UUID,
+        session: AsyncSession = Depends(get_session_dependency),
 ):
-    inventory = await StockService.get_warehouse_inventory(db, warehouse_id)
+    stmt = select(StockItem).where(
+        and_(
+            StockItem.warehouse_id == warehouse_id,
+            StockItem.product_id == product_id,
+        )
+    )
+    result = await session.execute(stmt)
+    stock_item = result.scalar_one_or_none()
 
-    # Apply threshold filter
-    filtered_items = [item for item in inventory if item.quantity >= threshold]
+    quantity = stock_item.quantity if stock_item else 0
 
     return {
         "warehouse_id": warehouse_id,
-        "items": filtered_items,
-        "total_items": len(filtered_items)
+        "product_id": product_id,
+        "quantity": quantity,
     }
-
-
-@router.get("/{warehouse_id}/product/{product_id}",
-            response_model=WarehouseProductStockResponse)
-async def get_warehouse_product_stock(
-        warehouse_id: UUID,
-        product_id: UUID,
-        db: AsyncSession = Depends(get_session)
-):
-    stock = await StockService.get_warehouse_product_stock(
-        db, warehouse_id, product_id
-    )
-    if not stock:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found in specified warehouse"
-        )
-    return stock
-
-
-@router.get("/product/{product_id}", response_model=List[StockLevelResponse])
-async def get_product_stock_levels(
-        product_id: UUID,
-        db: AsyncSession = Depends(get_session)
-):
-    stock_levels = await StockService.get_product_stock_levels(db, product_id)
-    if not stock_levels:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found in any warehouse"
-        )
-    return stock_levels
