@@ -1,70 +1,80 @@
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
-from uuid import UUID
-from typing import Optional, List
-
-from app.services.movement_service import MovementService
-from app.db.session import get_session
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.v1.schemas.movement import (
+from sqlalchemy import select
+from uuid import UUID
+
+from app.db.session import get_session_dependency
+from app.db.models import Movement
+from app.api.v1.schemas import (
     MovementResponse,
-    MovementListResponse,
-    MovementDurationResponse
+    MovementDurationResponse,
 )
 
 router = APIRouter()
 
 
-@router.get("/{movement_id}", response_model=MovementResponse)
+# Получить информацию о перемещении
+@router.get(
+    "/{movement_id}",
+    response_model=MovementResponse,
+    summary="Получить перемещение по ID",
+    responses={
+        404: {"description": "Перемещение не найдено"},
+        200: {"description": "Успешный ответ", "model": MovementResponse},
+    },
+)
 async def get_movement(
         movement_id: UUID,
-        db: AsyncSession = Depends(get_session)
+        session: AsyncSession = Depends(get_session_dependency),
 ):
-    movement = await MovementService.get_movement(db, movement_id)
+    stmt = select(Movement).where(Movement.id == movement_id)
+    result = await session.execute(stmt)
+    movement = result.scalar_one_or_none()
+
     if not movement:
-        raise HTTPException(status_code=404, detail="Movement not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movement not found",
+        )
     return movement
 
 
-@router.get("/", response_model=List[MovementListResponse])
-async def list_movements(
-        warehouse_id: Optional[UUID] = Query(None),
-        product_id: Optional[UUID] = Query(None),
-        start_date: Optional[datetime] = Query(None),
-        end_date: Optional[datetime] = Query(None),
-        limit: int = Query(100, ge=1, le=1000),
-        offset: int = Query(0, ge=0),
-        db: AsyncSession = Depends(get_session)
-):
-    movements = await MovementService.list_movements(
-        db,
-        warehouse_id=warehouse_id,
-        product_id=product_id,
-        start_date=start_date,
-        end_date=end_date,
-        limit=limit,
-        offset=offset
-    )
-    return movements
-
-
-@router.get("/{movement_id}/duration", response_model=MovementDurationResponse)
+# Получить длительность перемещения
+@router.get(
+    "/{movement_id}/duration",
+    response_model=MovementDurationResponse,
+    summary="Получить длительность перемещения",
+    responses={
+        404: {"description": "Перемещение не найдено"},
+        400: {"description": "Не указаны временные метки"},
+        200: {"description": "Успешный ответ", "model": MovementDurationResponse},
+    },
+)
 async def get_movement_duration(
         movement_id: UUID,
-        db: AsyncSession = Depends(get_session)
+        session: AsyncSession = Depends(get_session_dependency),
 ):
-    movement = await MovementService.get_movement(db, movement_id)
+    stmt = select(Movement).where(Movement.id == movement_id)
+    result = await session.execute(stmt)
+    movement = result.scalar_one_or_none()
+
     if not movement:
-        raise HTTPException(status_code=404, detail="Movement not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movement not found",
+        )
 
-    if not movement.is_completed:
-        raise HTTPException(status_code=400, detail="Movement not completed")
+    if not movement.departure_time or not movement.arrival_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Departure or arrival time is missing",
+        )
 
-    duration = await MovementService.calculate_duration(movement)
+    duration = (movement.arrival_time - movement.departure_time).total_seconds()
 
     return {
         "movement_id": movement.id,
         "duration_seconds": duration,
         "departure_time": movement.departure_time,
-        "arrival_time": movement.arrival_time
+        "arrival_time": movement.arrival_time,
     }
