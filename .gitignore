@@ -1,0 +1,12 @@
+**/*.pyc
+*.env
+.vscode
+release_openapi/
+.idea
+venv
+.coverage
+coverage.*
+tmp
+other
+Makefile
+data
