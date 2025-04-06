@@ -1,45 +1,46 @@
-from sqlalchemy import (
-     UUID, Integer, ForeignKey, CheckConstraint
-)
-from sqlalchemy.orm import (
-    relationship,
-    mapped_column, Mapped
-)
+from sqlalchemy import UUID, Integer, ForeignKey, CheckConstraint, Index
+from sqlalchemy.orm import mapped_column, Mapped
 import uuid
-
 from app.db.base import Base
 
 
 class StockItem(Base):
     __tablename__ = "stock_items"
     __table_args__ = (
-        CheckConstraint('quantity >= 0', name='quantity_non_negative'),
+        CheckConstraint(
+            'quantity >= 0',
+            name='ck_stock_quantity_non_negative'
+        ),
+        Index(
+            'ix_stock_warehouse_product',
+            'warehouse_id', 'product_id',
+            unique=True
+        ),
+        {'comment': 'Текущие остатки товаров на складах'}
     )
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         primary_key=True,
         default=lambda: str(uuid.uuid4()),
-        comment="Идентификатор записи"
+        comment="Внутренний ID записи"
     )
+
     warehouse_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("warehouses.id", ondelete="CASCADE"),
-        nullable=False,
-        comment="Ссылка на склад"
+        nullable=False
     )
+
     product_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("products.id", ondelete="CASCADE"),
-        nullable=False,
-        comment="Ссылка на товар"
+        nullable=False
     )
+
     quantity: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        default=0,
-        comment="Количество товара на складе"
+        server_default="0",
+        comment="Текущее количество (>= 0)"
     )
-
-    warehouse: Mapped["Warehouse"] = relationship(back_populates="stock_items")
-    product: Mapped["Product"] = relationship(back_populates="stock_items")
