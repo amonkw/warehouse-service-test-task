@@ -1,6 +1,6 @@
 from .movements import router as movements_router
 from .stock import router as stock_router
-from .kafka import router as kafka_router
+from .kafka_webhook import router as kafka_router
 from .admin import router as admin_router
 
 __all__ = [

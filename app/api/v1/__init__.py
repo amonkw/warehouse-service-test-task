@@ -1,43 +1,24 @@
-from .endpoints import movements, stock, kafka
+from .endpoints import movements, stock, kafka_webhook
 from .schemas import (
-    WarehouseBase,
-    WarehouseCreate,
-    WarehouseResponse,
-    ProductBase,
-    ProductCreate,
-    ProductResponse,
-    StockItemBase,
-    StockItemResponse,
-    StockLevelResponse,
-    WarehouseStockResponse,
-    MovementBase,
-    MovementCreate,
-    MovementResponse,
-    MovementListResponse,
-    MovementDurationResponse,
-    KafkaMessage,
-    KafkaResponse
+ProductStockResponse,
+MovementResponse,
+MovementDurationResponse,
+KafkaMessageData,
+KafkaFullMessage,
+KafkaWebhookRequest,
+KafkaResponse
 )
+
 
 __all__ = [
     'movements',
     'stock',
-    'kafka',
-    'WarehouseBase',
-    'WarehouseCreate',
-    'WarehouseResponse',
-    'ProductBase',
-    'ProductCreate',
-    'ProductResponse',
-    'StockItemBase',
-    'StockItemResponse',
-    'StockLevelResponse',
-    'WarehouseStockResponse',
-    'MovementBase',
-    'MovementCreate',
+    'kafka_webhook',
+    'ProductStockResponse',
     'MovementResponse',
-    'MovementListResponse',
     'MovementDurationResponse',
-    'KafkaMessage',
+    'KafkaMessageData',
+    'KafkaFullMessage',
+    'KafkaWebhookRequest',
     'KafkaResponse'
 ]

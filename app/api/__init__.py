@@ -1,10 +1,9 @@
-# Собираем все роутеры API в одном месте для удобного импорта в app/__init__.py
-from .v1.endpoints import movements, stock, kafka
+from .v1.endpoints import movements, stock, kafka_webhook
 
 routers = [
     movements.router,
     stock.router,
-    kafka.router
+    kafka_webhook.router
 ]
 
 __all__ = ['routers']
