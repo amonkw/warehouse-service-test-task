@@ -1,0 +1,28 @@
+# Этап 1: Сборка зависимостей
+FROM python:3.12
+
+WORKDIR /app
+
+RUN apt update && apt install -y postgresql
+
+COPY ./requirements.txt ./requirements.txt
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+
+COPY . /app
+
+COPY alembic.ini /app/alembic.ini
+
+# Копирование скрипта точки входа
+COPY ./docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Указываем порт, который слушает FastAPI (uvicorn)
+EXPOSE 8000
+
+# Точка входа
+ENV PYTHONPATH "/app:/app/tests"
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

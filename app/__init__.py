@@ -8,6 +8,7 @@ Warehouse Movement Service
 - Учет текущего состояния складов
 - Предоставление API для работы с данными
 """
+
 import logging
 
 from app.config import settings

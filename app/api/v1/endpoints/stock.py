@@ -7,6 +7,7 @@ from app.db.session import get_session_dependency
 from uuid import UUID
 
 from app.api.v1.schemas.stock import ProductStockResponse
+from app.services.redis import get_stock_cache_key, get_cache
 
 router = APIRouter()
 
@@ -21,10 +22,16 @@ router = APIRouter()
     },
 )
 async def get_product_stock(
-        warehouse_id: UUID,
-        product_id: UUID,
-        session: AsyncSession = Depends(get_session_dependency),
+    warehouse_id: UUID,
+    product_id: UUID,
+    session: AsyncSession = Depends(get_session_dependency),
 ):
+    cache_key = get_stock_cache_key(warehouse_id, product_id)
+    cached_data = await get_cache(cache_key)
+    if cached_data is not None:
+        # Pydantic сам провалидирует dict из кэша
+        return ProductStockResponse(**cached_data)  # Возвращаем из кэша
+
     stmt = select(StockItem).where(
         and_(
             StockItem.warehouse_id == warehouse_id,

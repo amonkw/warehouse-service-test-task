@@ -4,7 +4,13 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy import NullPool, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, async_scoped_session
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+    async_scoped_session,
+)
+from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 
@@ -17,16 +23,15 @@ engine = create_async_engine(
     poolclass=NullPool if settings.IS_AUTOTEST else None,
     pool_pre_ping=True,
     pool_size=20,
-    max_overflow=10
+    max_overflow=10,
 )
 
 # Базовый sessionmaker для всех типов сессий
 base_session_factory = async_sessionmaker(
-    bind=engine,
-    expire_on_commit=False,
-    autoflush=False,
-    class_=AsyncSession
+    bind=engine, expire_on_commit=False, autoflush=False, class_=AsyncSession
 )
+
+SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
 @asynccontextmanager
@@ -55,10 +60,7 @@ async def get_scoped_session():
     - Привязка к текущей asyncio task
     - Долгоживущие соединения
     """
-    scoped_factory = async_scoped_session(
-        base_session_factory,
-        scopefunc=current_task
-    )
+    scoped_factory = async_scoped_session(base_session_factory, scopefunc=current_task)
     try:
         async with scoped_factory() as session:
             try:
@@ -66,7 +68,9 @@ async def get_scoped_session():
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Background task session rollback: {str(e)}", exc_info=True)
+                logger.error(
+                    f"Background task session rollback: {str(e)}", exc_info=True
+                )
                 raise
     finally:
         await scoped_factory.remove()
@@ -88,7 +92,7 @@ async def create_db_async():
         try:
             result = await conn.execute(
                 text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
-                {"db_name": db_name}
+                {"db_name": db_name},
             )
             if not result.scalar_one_or_none():
                 await conn.execute(text(f"CREATE DATABASE {db_name}"))
@@ -97,6 +101,7 @@ async def create_db_async():
             raise
         finally:
             await admin_engine.dispose()
+
 
 async def get_session_dependency() -> AsyncSession:
     """

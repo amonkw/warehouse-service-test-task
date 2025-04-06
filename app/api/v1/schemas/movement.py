@@ -11,7 +11,9 @@ class MovementResponse(BaseModel):
     quantity: int = Field(..., gt=0, examples=[10], description="Количество товара")
 
     source_warehouse_id: Optional[UUID] = Field(None, description="ID исходного склада")
-    destination_warehouse_id: Optional[UUID] = Field(None, description="ID склада назначения")
+    destination_warehouse_id: Optional[UUID] = Field(
+        None, description="ID склада назначения"
+    )
 
     departure_time: Optional[datetime] = Field(None, examples=["2023-01-01T00:00:00Z"])
     arrival_time: Optional[datetime] = Field(None, examples=["2023-01-01T01:00:00Z"])
@@ -41,13 +43,16 @@ class MovementResponse(BaseModel):
                 "arrival_time": "2023-01-01T01:00:00Z",
                 "status": "completed",
                 "quantity_diff": 0,
-                "duration_seconds": 3600.0
+                "duration_seconds": 3600.0,
             }
         }
 
+
 class MovementDurationResponse(BaseModel):
     movement_id: UUID = Field(..., examples=["3fa85f64-5717-4562-b3fc-2c963f66afa6"])
-    duration_seconds: float = Field(..., examples=[3600.0], description="Длительность в секундах")
+    duration_seconds: float = Field(
+        ..., examples=[3600.0], description="Длительность в секундах"
+    )
     departure_time: datetime = Field(..., examples=["2023-01-01T00:00:00Z"])
     arrival_time: datetime = Field(..., examples=["2023-01-01T01:00:00Z"])
 

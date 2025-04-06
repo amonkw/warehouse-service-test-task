@@ -9,6 +9,7 @@ from app.api.v1.schemas import (
     MovementResponse,
     MovementDurationResponse,
 )
+from app.services.redis import get_cache, get_movement_cache_key, set_cache
 
 router = APIRouter()
 
@@ -24,9 +25,14 @@ router = APIRouter()
     },
 )
 async def get_movement(
-        movement_id: UUID,
-        session: AsyncSession = Depends(get_session_dependency),
+    movement_id: UUID,
+    session: AsyncSession = Depends(get_session_dependency),
 ):
+    cache_key = get_movement_cache_key(movement_id)
+    cached_data = await get_cache(cache_key)
+    if cached_data is not None:
+        return MovementResponse.model_validate(cached_data)
+
     stmt = select(Movement).where(Movement.id == movement_id)
     result = await session.execute(stmt)
     movement = result.scalar_one_or_none()
@@ -36,10 +42,12 @@ async def get_movement(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Movement not found",
         )
-    return movement
+    # Преобразуем в схему перед кэшированием и возвратом
+    response_model = MovementResponse.model_validate(movement)
+    await set_cache(cache_key, response_model.model_dump(mode="json"))
+    return response_model
 
 
-# Получить длительность перемещения
 @router.get(
     "/{movement_id}/duration",
     response_model=MovementDurationResponse,
@@ -51,8 +59,8 @@ async def get_movement(
     },
 )
 async def get_movement_duration(
-        movement_id: UUID,
-        session: AsyncSession = Depends(get_session_dependency),
+    movement_id: UUID,
+    session: AsyncSession = Depends(get_session_dependency),
 ):
     stmt = select(Movement).where(Movement.id == movement_id)
     result = await session.execute(stmt)

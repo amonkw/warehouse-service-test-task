@@ -1,0 +1,18 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/app
+      - ./cache/pip:/root/.cache/pip
+      - ./cache/apt:/var/.cache/apt
+      - /app/venv
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-warehouse_db}
+      IS_AUTOTEST: True
+    extra_host:
+      - "host.docker.internal:host-gateway"
+    command: test

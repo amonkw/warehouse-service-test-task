@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     KAFKA_TOPIC: str = Field(..., alias="kafka_topic")
     KAFKA_GROUP_ID: str = Field(..., alias="kafka_group_id")
 
+    # Redis
+    REDIS_HOST: str = Field(default="localhost", alias="redis_host")
+    REDIS_PORT: int = Field(default=6379, alias="redis_port")
+    REDIS_DB: int = Field(default=0, alias="redis_db")
+    CACHE_TTL_SECONDS: int = Field(default=300, alias="cache_ttl_seconds")
+
     # App settings
     APP_HOST: str = Field(default="0.0.0.0", alias="app_host")
     APP_PORT: int = Field(default=8000, alias="app_port")
@@ -34,6 +40,10 @@ class Settings(BaseSettings):
         )
 
     @property
+    def redis_url(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    @property
     def test_database_url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
@@ -41,8 +51,8 @@ class Settings(BaseSettings):
         )
 
     class Config:
-        env_file = ".env"
-        env_file_encoding = 'utf-8'
+        env_file = ".env.example"
+        env_file_encoding = "utf-8"
         extra = "ignore"
 
 

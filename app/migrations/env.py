@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 # All models should be imported
 from app.db import Base
-from app.db import Warehouse # noqa
+from app.db import Warehouse  # noqa
 from app.config import settings
 
 # this is the Alembic Config object, which provides

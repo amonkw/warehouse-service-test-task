@@ -8,18 +8,23 @@ from app.api.v1.endpoints import movements, stock, kafka_webhook, admin
 from app.db.session import create_db_async
 from app.config import settings
 from app.services.kafka_consumer import run_consumer
+from app.services.redis import get_redis_client, redis_client
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
+
+    await get_redis_client()
+
     consumer_task = None
     if settings.APP_MODE == "kafka":
         consumer_task = asyncio.create_task(run_consumer())
         logger.info("Kafka consumer started")
 
-    yield  # Приложение работает здесь
+    yield
 
     if settings.APP_MODE == "kafka":
         consumer_task.cancel()
@@ -28,10 +33,13 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             logger.info("Kafka consumer stopped")
 
+    if redis_client:
+        await redis_client.close()
+        logger.info("Redis connection closed.")
+
+
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.PROJECT_VERSION,
-    lifespan=lifespan
+    title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION, lifespan=lifespan
 )
 
 app.include_router(movements.router, prefix="/api/v1/movements", tags=["movements"])

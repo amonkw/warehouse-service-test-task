@@ -32,7 +32,7 @@ def validate_and_prepare_event_data(message_data):
             "product_id": product_id,
             "quantity": message_data.quantity,
             "timestamp": message_data.timestamp.isoformat(),
-            "event": message_data.event.value
+            "event": message_data.event.value,
         }
     except Exception as e:
         logger.error(f"Validation error: {str(e)}")
@@ -46,12 +46,11 @@ def validate_and_prepare_event_data(message_data):
     responses={
         200: {"description": "Сообщение успешно обработано"},
         400: {"description": "Неверные данные в запросе"},
-        500: {"description": "Внутренняя ошибка сервера"}
-    }
+        500: {"description": "Внутренняя ошибка сервера"},
+    },
 )
 async def kafka_webhook(
-        request: KafkaWebhookRequest,
-        db: AsyncSession = Depends(get_session_dependency)
+    request: KafkaWebhookRequest, db: AsyncSession = Depends(get_session_dependency)
 ) -> KafkaResponse:
     """
     Обрабатывает входящие сообщения о перемещениях товаров.
@@ -68,10 +67,10 @@ async def kafka_webhook(
         # Добавляем код склада (из source или генерируем)
         warehouse_code = (
             request.source
-            if hasattr(request, 'source') and request.source.startswith('WH-')
+            if hasattr(request, "source") and request.source.startswith("WH-")
             else f"WH-{str(request.data.warehouse_id)[:4]}"
         )
-        event_data['warehouse_code'] = warehouse_code
+        event_data["warehouse_code"] = warehouse_code
 
         # Обработка события
         await process_movement_event(db, event_data)
@@ -85,19 +84,16 @@ async def kafka_webhook(
                 "event_type": request.data.event.value,
                 "warehouse_id": str(request.data.warehouse_id),
                 "product_id": str(request.data.product_id),
-                "processed_at": datetime.utcnow().isoformat()
-            }
+                "processed_at": datetime.utcnow().isoformat(),
+            },
         )
 
     except ValueError as e:
         logger.warning(f"Validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
